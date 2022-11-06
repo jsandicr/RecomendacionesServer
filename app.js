@@ -65,11 +65,13 @@ app.get('/canciones/:id', (req, res) => {
       let respuesta = {
         id: 0,
         name: '',
+        spotifyId: '',
         genre: [],
         singers: []
       }
       respuesta.id = result.records[0]._fields[0].low
       respuesta.name = result.records[0]._fields[1].properties.name
+      respuesta.spotifyId = result.records[0]._fields[1].properties.spotifyId
       result.records.forEach((result, id) => {
         //Evita que se almacenen elementos repetidos
         if(respuesta.singers[id-1] !== result._fields[2].properties.name){
