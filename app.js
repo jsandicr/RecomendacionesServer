@@ -91,6 +91,65 @@ app.get('/canciones/:id', (req, res) => {
     });
 })
 
+//CRUD cantantes
+
+//Obtener todos los cantantes
+app.get('/cantantes', (req, res) => {
+  session
+    .run('MATCH(n:singer) return n')
+    .then((result) => {
+      if(result.records[0]){
+        let cantantes = []
+        result.records.forEach((result) => {
+          cantantes.push(result._fields[0].properties.name)
+        })
+        res.send( cantantes )
+      }else{
+        res.send([])
+      }
+    })
+    .catch((err) => {
+      console.log(err)
+    });
+});
+
+//Guardar un cantante
+app.post('/cantantes', (req, res) => {
+  session
+    //Encuentra el nodo Song con el id enviado y retorna las relaciones de tipo Genre y Singer
+    .run('CREATE (C:singer { name: "'+req.body.name+'" })')
+    .then( () => {
+      res.send('Cantate almacenado con exito')
+    })
+    .catch((err) => {
+      console.log(err)
+    });
+});
+
+//Actualizar cantante
+app.put('/cantantes/:id', (req, res) => {
+  session
+    .run('MATCH(C:singer) WHERE ID(C) = '+req.params.id+' SET C.name = "'+req.body.name+'" RETURN C')
+    .then( () => {
+      res.send('Cantate actualizado con exito')
+    })
+    .catch((err) => {
+      console.log(err)
+    });
+});
+
+//Eliminar cantante
+app.delete('/cantantes/:id', (req, res) => {
+  session
+    .run('MATCH(C:singer) WHERE ID(C) = '+req.params.id+' DETACH DELETE C')
+    .then( () => {
+      res.send('Cantate eliminado con exito')
+    })
+    .catch((err) => {
+      console.log(err)
+    });
+});
+
 app.listen(3000, () => {
   console.log("El servidor está disponible en el puerto 3000");
 });
