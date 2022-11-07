@@ -113,6 +113,22 @@ app.get('/cantantes', (req, res) => {
     });
 });
 
+//Obtener cantante por id
+app.get('/cantantes/:id', (req, res) => {
+  session
+    .run('MATCH(N:singer) WHERE ID(N) = '+req.params.id+' return N')
+    .then((result) => {
+      if(result.records[0]){
+        res.send(result.records[0]._fields[0].properties.name)
+      }else{
+        res.send([])
+      }
+    })
+    .catch((err) => {
+      console.log(err)
+    });
+});
+
 //Guardar un cantante
 app.post('/cantantes', (req, res) => {
   session
