@@ -28,8 +28,11 @@ app.use(function (req, res, next) {
   next();
 });
 
-let driver = neo4j.driver('bolt://localhost:7687', neo4j.auth.basic('', ''));
+let driver = neo4j.driver('bolt://localhost:7687/Canciones', neo4j.auth.basic('', ''));
 let session = driver.session();
+
+require("./app/routes/genero.routes.js")(app);
+require("./app/routes/cantante.routes.js")(app);
 
 //Se usa en el buscador. Recibe el parametro de busqueda y returna los nombre que hacen match
 app.get('/buscar/:termino', (req, res) => {
@@ -60,111 +63,41 @@ app.get('/buscar/:termino', (req, res) => {
 app.get('/canciones/:id', (req, res) => {
   session
     //Encuentra el nodo Song con el id enviado y retorna las relaciones de tipo Genre y Singer
-    .run('MATCH(C:song)-[:SINGER]->(S:singer),(N)-[:GENRE]->(G:genre) WHERE ID(N) = '+req.params.id.toString()+' RETURN ID(C), C, S, G')
+    .run('MATCH(C:song)-[:SINGER]->(S:singer),(C)-[:GENRE]->(G:genre) WHERE ID(C) = '+req.params.id.toString()+' RETURN ID(C), C, S, G')
     .then((result) => {
-      let respuesta = {
-        id: 0,
-        name: '',
-        spotifyId: '',
-        genre: [],
-        singers: []
+      if(result.records != null){
+        let respuesta = {
+          id: 0,
+          name: '',
+          spotifyId: '',
+          genre: [],
+          singers: []
+        }
+        console.log(result)
+        respuesta.id = result.records[0]._fields[0].low
+        respuesta.name = result.records[0]._fields[1].properties.name
+        respuesta.spotifyId = result.records[0]._fields[1].properties.spotifyId
+        result.records.forEach((result, id) => {
+          //Evita que se almacenen elementos repetidos
+          if(respuesta.singers[id-1] !== result._fields[2].properties.name){
+            respuesta.singers.push(result._fields[2].properties.name)
+          }
+        })
+        result.records.forEach((result, id) => {
+          //Evita que se almacenen elementos repetidos
+          if(respuesta.genre[id-1] !== result._fields[3].properties.name){
+            respuesta.genre.push(result._fields[3].properties.name)
+          }
+        })
+        res.send(respuesta)
+      }else{
+        res.send([])
       }
-      respuesta.id = result.records[0]._fields[0].low
-      respuesta.name = result.records[0]._fields[1].properties.name
-      respuesta.spotifyId = result.records[0]._fields[1].properties.spotifyId
-      result.records.forEach((result, id) => {
-        //Evita que se almacenen elementos repetidos
-        if(respuesta.singers[id-1] !== result._fields[2].properties.name){
-          respuesta.singers.push(result._fields[2].properties.name)
-        }
-      })
-      result.records.forEach((result, id) => {
-        //Evita que se almacenen elementos repetidos
-        if(respuesta.genre[id-1] !== result._fields[3].properties.name){
-          respuesta.genre.push(result._fields[3].properties.name)
-        }
-      })
-      res.send(respuesta)
     })
     .catch((err) => {
       console.log(err)
     });
 })
-
-//CRUD cantantes
-
-//Obtener todos los cantantes
-app.get('/cantantes', (req, res) => {
-  session
-    .run('MATCH(n:singer) return n')
-    .then((result) => {
-      if(result.records[0]){
-        let cantantes = []
-        result.records.forEach((result) => {
-          cantantes.push(result._fields[0].properties.name)
-        })
-        res.send( cantantes )
-      }else{
-        res.send([])
-      }
-    })
-    .catch((err) => {
-      console.log(err)
-    });
-});
-
-//Obtener cantante por id
-app.get('/cantantes/:id', (req, res) => {
-  session
-    .run('MATCH(N:singer) WHERE ID(N) = '+req.params.id+' return N')
-    .then((result) => {
-      if(result.records[0]){
-        res.send(result.records[0]._fields[0].properties.name)
-      }else{
-        res.send([])
-      }
-    })
-    .catch((err) => {
-      console.log(err)
-    });
-});
-
-//Guardar un cantante
-app.post('/cantantes', (req, res) => {
-  session
-    //Encuentra el nodo Song con el id enviado y retorna las relaciones de tipo Genre y Singer
-    .run('CREATE (C:singer { name: "'+req.body.name+'" })')
-    .then( () => {
-      res.send('Cantate almacenado con exito')
-    })
-    .catch((err) => {
-      console.log(err)
-    });
-});
-
-//Actualizar cantante
-app.put('/cantantes/:id', (req, res) => {
-  session
-    .run('MATCH(C:singer) WHERE ID(C) = '+req.params.id+' SET C.name = "'+req.body.name+'" RETURN C')
-    .then( () => {
-      res.send('Cantate actualizado con exito')
-    })
-    .catch((err) => {
-      console.log(err)
-    });
-});
-
-//Eliminar cantante
-app.delete('/cantantes/:id', (req, res) => {
-  session
-    .run('MATCH(C:singer) WHERE ID(C) = '+req.params.id+' DETACH DELETE C')
-    .then( () => {
-      res.send('Cantate eliminado con exito')
-    })
-    .catch((err) => {
-      console.log(err)
-    });
-});
 
 app.listen(3000, () => {
   console.log("El servidor está disponible en el puerto 3000");
