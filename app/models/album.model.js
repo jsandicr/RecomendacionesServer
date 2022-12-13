@@ -3,9 +3,8 @@ const mongoose = require("mongoose");
 /**
  * Esta es la definición de la estructura
  */
-const GeneroSchema = mongoose.Schema(
+const AlbumSchema = mongoose.Schema(
   {
-    id: String,
     name: String
   },
   {
@@ -13,4 +12,4 @@ const GeneroSchema = mongoose.Schema(
   }
 );
 
-module.exports = mongoose.model("Genero", GeneroSchema);
+module.exports = mongoose.model("Album", AlbumSchema);

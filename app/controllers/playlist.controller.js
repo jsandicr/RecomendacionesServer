@@ -1,7 +1,7 @@
 const neo4j = require('neo4j-driver')
 
 //Referencia al modelo
-const Cantante = require("../models/cantante.model.js");
+const PlayList = require("../models/playlist.model.js");
 
 let driver = neo4j.driver('bolt://localhost:7687', neo4j.auth.basic('', ''));
 let session = driver.session();
@@ -16,27 +16,34 @@ exports.create = (req, res) => {
   //Se valida
   if (!req.body.name) {
     return res.status(400).send({
-      message: "El nombre del cantante no puede ser vacío",
+      message: "El nombre de la playlist no puede ser vacío",
     });
   }
 
   //Se forma
-  const cantante = new Cantante({
+  const playlist = new PlayList({
     name: req.body.name
   });
 
   //Se guarda
   session
     //Encuentra el nodo Song con el id enviado y retorna las relaciones de tipo Genre y Singer
-    .run('CREATE (C:singer { name: "'+cantante.name+'" })')
+    .run('CREATE (P:playlist { name: "'+playlist.name+'" })')
     .then( () => {
-      let respuesta = 'Cantate almacenado con exito'
+      let respuesta = 'Playlist almacenado con exito'
       res.send(JSON.stringify(respuesta))
     })
     .catch((err) => {
       console.log(err)
     });
 };
+
+//Relacionar canciones a playlist
+/*
+MATCH(S:song),
+(P:playlist)
+WHERE ID(S) = 0 AND ID(P) = 15
+CREATE (P)-[:PLAYLIST]->(S)*/
 
 /**
  * Se obtienen todos los registros
@@ -45,18 +52,18 @@ exports.create = (req, res) => {
  */
 exports.findAll = (req, res) => {
   session
-    .run('MATCH(n:singer) return ID(n), n')
+    .run('MATCH(P:playlist) return ID(P), P')
     .then((result) => {
       let respuesta = []
       if(result.records[0]){
         result.records.forEach((result) => {
-          let cantante = {
+          let playlist = {
             id: 0,
             name: ''
           }
-          cantante.id = result._fields[0].low
-          cantante.name = result._fields[1].properties.name
-          respuesta.push(cantante)
+          playlist.id = result._fields[0].low
+          playlist.name = result._fields[1].properties.name
+          respuesta.push(playlist)
         })
         res.send( respuesta )
       }else{
@@ -75,16 +82,22 @@ exports.findAll = (req, res) => {
  */
 exports.findOne = (req, res) => {
   session
-    .run('MATCH(N:singer) WHERE ID(N) = '+req.params.id+' return ID(N), N')
+    .run('MATCH(P:playlist)-[:PLAYLIST]->(N:song) WHERE ID(P) = '+req.params.id+' RETURN ID(P),P,N')
     .then((result) => {
-      let respuesta = {
-        id: 0,
-        name: ''
-      }
+      const playlist = new PlayList({
+        id: '',
+        name: '',
+        songs: []
+      })
       if(result.records[0]){
-        respuesta.id = result.records[0]._fields[0].low
-        respuesta.name = result.records[0]._fields[1].properties.name
-        res.send(respuesta)
+        playlist.id = result.records[0]._fields[0].low
+        playlist.name = result.records[0]._fields[1].properties.name
+        result.records.forEach((result) => {
+          if(!(playlist.songs.includes(result._fields[2].properties.name))){
+            playlist.songs.push(result._fields[2].properties.name)
+          }
+        })
+        res.send(playlist)
       }else{
         res.send([])
       }
@@ -104,14 +117,14 @@ exports.update = (req, res) => {
   // Valida
   if (!req.body.name) {
     return res.status(400).send({
-      message: "El nombre del cantante no puede estar vacio",
+      message: "El nombre del album no puede estar vacio",
     });
   }
 
   session
-    .run('MATCH(C:singer) WHERE ID(C) = '+req.params.id+' SET C.name = "'+req.body.name+'" RETURN C')
+    .run('MATCH(P:playlist) WHERE ID(P) = '+req.params.id+' SET P.name = "'+req.body.name+'" RETURN P')
     .then( () => {
-      let respuesta = 'Cantante actualizado con exito';
+      let respuesta = 'Playlist actualizada con exito';
       res.send(JSON.stringify(respuesta))
     })
     .catch((err) => {
@@ -126,9 +139,9 @@ exports.update = (req, res) => {
  */
 exports.delete = (req, res) => {
   session
-    .run('MATCH(C:singer) WHERE ID(C) = '+req.params.id+' DETACH DELETE C')
+    .run('MATCH(P:playlist) WHERE ID(P) = '+req.params.id+' DETACH DELETE P')
     .then( () => {
-      let respuesta = 'Cantante eliminado con exito';
+      let respuesta = 'Playlist eliminado con exito';
       res.send(JSON.stringify(respuesta))
     })
     .catch((err) => {

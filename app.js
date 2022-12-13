@@ -33,71 +33,9 @@ let session = driver.session();
 
 require("./app/routes/genero.routes.js")(app);
 require("./app/routes/cantante.routes.js")(app);
-
-//Se usa en el buscador. Recibe el parametro de busqueda y returna los nombre que hacen match
-app.get('/buscar/:termino', (req, res) => {
-  session
-    .run('MATCH(n:song) where toLower(n.name) =~ ".*'+req.params.termino.toLowerCase()+'.*"  return ID(n), n.name LIMIT 5')
-    .then((result) => {
-      if(result.records[0]){
-        let respuestas = []
-        result.records.forEach((result) => {
-          let respuesta = {
-            id: 0,
-            name: ''
-          }
-          respuesta.id = result._fields[0].low
-          respuesta.name = result._fields[1]
-          respuestas.push(respuesta)
-        })
-        res.send( respuestas )
-      }else{
-        res.send([])
-      }
-    })
-    .catch((err) => {
-      console.log(err)
-    });
-})
-
-app.get('/canciones/:id', (req, res) => {
-  session
-    //Encuentra el nodo Song con el id enviado y retorna las relaciones de tipo Genre y Singer
-    .run('MATCH(C:song)-[:SINGER]->(S:singer),(C)-[:GENRE]->(G:genre) WHERE ID(C) = '+req.params.id.toString()+' RETURN ID(C), C, S, G')
-    .then((result) => {
-      if(result.records != null){
-        let respuesta = {
-          id: 0,
-          name: '',
-          spotifyId: '',
-          genre: [],
-          singers: []
-        }
-        console.log(result)
-        respuesta.id = result.records[0]._fields[0].low
-        respuesta.name = result.records[0]._fields[1].properties.name
-        respuesta.spotifyId = result.records[0]._fields[1].properties.spotifyId
-        result.records.forEach((result, id) => {
-          //Evita que se almacenen elementos repetidos
-          if(respuesta.singers[id-1] !== result._fields[2].properties.name){
-            respuesta.singers.push(result._fields[2].properties.name)
-          }
-        })
-        result.records.forEach((result, id) => {
-          //Evita que se almacenen elementos repetidos
-          if(respuesta.genre[id-1] !== result._fields[3].properties.name){
-            respuesta.genre.push(result._fields[3].properties.name)
-          }
-        })
-        res.send(respuesta)
-      }else{
-        res.send([])
-      }
-    })
-    .catch((err) => {
-      console.log(err)
-    });
-})
+require("./app/routes/album.routes.js")(app);
+require("./app/routes/playlist.routes.js")(app);
+require("./app/routes/cancion.routes.js")(app);
 
 app.listen(3000, () => {
   console.log("El servidor está disponible en el puerto 3000");

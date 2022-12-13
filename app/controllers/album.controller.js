@@ -1,7 +1,7 @@
 const neo4j = require('neo4j-driver')
 
 //Referencia al modelo
-const Genero = require("../models/genero.model.js");
+const Album = require("../models/album.model.js");
 
 let driver = neo4j.driver('bolt://localhost:7687', neo4j.auth.basic('', ''));
 let session = driver.session();
@@ -16,29 +16,33 @@ exports.create = (req, res) => {
   //Se valida
   if (!req.body.name) {
     return res.status(400).send({
-      message: "El nombre del genero no puede ser vacío",
+      message: "El nombre del album no puede ser vacío",
     });
   }
 
   //Se forma
-  const genero = new Genero({
+  const album = new Album({
     name: req.body.name
   });
 
   //Se guarda
   session
-    .run('CREATE (G:genre { name: "'+genero.name+'" })')
+    //Encuentra el nodo Song con el id enviado y retorna las relaciones de tipo Genre y Singer
+    .run('CREATE (A:album { name: "'+album.name+'" })')
     .then( () => {
-      let respuesta = 'Genero almacenado con exito';
+      let respuesta = 'Album almacenado con exito'
       res.send(JSON.stringify(respuesta))
     })
     .catch((err) => {
-      res.status(500).send({
-        message:
-          err.message || "Opss. Tuvimos un error registrando el genero.",
-      });
+      console.log(err)
     });
 };
+
+//Relacionar canciones a album
+/*MATCH(S:song),
+(A:album)
+WHERE ID(S) = 0 AND ID(A) = 16
+CREATE (A)-[:ALBUM]->(S)*/
 
 /**
  * Se obtienen todos los registros
@@ -47,27 +51,26 @@ exports.create = (req, res) => {
  */
 exports.findAll = (req, res) => {
   session
-    .run('MATCH(n:genre) return ID(n),n')
+    .run('MATCH(A:album) return ID(A), A')
     .then((result) => {
+      let respuesta = []
       if(result.records[0]){
-        let genres = []
         result.records.forEach((result) => {
-          const genre = new Genero({
-            id: result._fields[0].low,
-            name: result._fields[1].properties.name
-          })
-          genres.push(genre)
+          let album = {
+            id: 0,
+            name: ''
+          }
+          album.id = result._fields[0].low
+          album.name = result._fields[1].properties.name
+          respuesta.push(album)
         })
-        res.send( genres )
+        res.send( respuesta )
       }else{
         res.send([])
       }
     })
     .catch((err) => {
-      return res.status(500).send({
-        message:
-          "Opss. Tuvimos un error al obtener el genero " + req.params.id,
-      });
+      console.log(err)
     });
 };
 
@@ -78,19 +81,19 @@ exports.findAll = (req, res) => {
  */
 exports.findOne = (req, res) => {
   session
-    .run('MATCH(N:genre) WHERE ID(N) = '+req.params.id+' return ID(N), N')
+    .run('MATCH(A:album) WHERE ID(A) = '+req.params.id+' return ID(A), A')
     .then((result) => {
-        let respuesta = {
-          id: 0,
-          name: ''
-        }
-        if(result.records[0]){
-          respuesta.id = result.records[0]._fields[0].low
-          respuesta.name = result.records[0]._fields[1].properties.name
-          res.send(respuesta)
-        }else{
-          res.send([])
-        }
+      let respuesta = {
+        id: 0,
+        name: ''
+      }
+      if(result.records[0]){
+        respuesta.id = result.records[0]._fields[0].low
+        respuesta.name = result.records[0]._fields[1].properties.name
+        res.send(respuesta)
+      }else{
+        res.send([])
+      }
     })
     .catch((err) => {
       console.log(err)
@@ -107,23 +110,19 @@ exports.update = (req, res) => {
   // Valida
   if (!req.body.name) {
     return res.status(400).send({
-      message: "El nombre del genero no puede estar vacio",
+      message: "El nombre del album no puede estar vacio",
     });
   }
 
   session
-    .run('MATCH(G:genre) WHERE ID(G) = '+req.params.id+' SET G.name = "'+req.body.name+'" RETURN G')
+    .run('MATCH(A:album) WHERE ID(A) = '+req.params.id+' SET A.name = "'+req.body.name+'" RETURN A')
     .then( () => {
-      let respuesta = 'Genero actualizado con exito';
+      let respuesta = 'Cantate actualizado con exito';
       res.send(JSON.stringify(respuesta))
     })
     .catch((err) => {
-      return res.status(500).send({
-        message:
-          "Opss. Tuvimos un error al actualizar el producto " + req.params.id,
-      });
+      console.log(err)
     });
-  
 };
 
 /**
@@ -133,9 +132,10 @@ exports.update = (req, res) => {
  */
 exports.delete = (req, res) => {
   session
-    .run('MATCH(G:genre) WHERE ID(G) = '+req.params.id+' DETACH DELETE G')
+    .run('MATCH(A:album) WHERE ID(A) = '+req.params.id+' DETACH DELETE A')
     .then( () => {
-      res.send('Genero eliminado con exito')
+      let respuesta = 'Album eliminado con exito';
+      res.send(JSON.stringify(respuesta))
     })
     .catch((err) => {
       console.log(err)
