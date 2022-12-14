@@ -5,11 +5,9 @@ const mongoose = require("mongoose");
  */
 const CancionSchema = mongoose.Schema(
   {
+    id: Number,
     name: String,
-    spotifyId: String,
-    album: String,
-    generos: [],
-    cantantes: []
+    spotifyId: String
   },
   {
     timestamps: true,

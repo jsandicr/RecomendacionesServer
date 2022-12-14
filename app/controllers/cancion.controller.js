@@ -61,66 +61,19 @@ exports.findAll = (req, res) => {
   });*/
   const canciones = [];
   session
-    .run('OPTIONAL MATCH(A:album)-[:ALBUM]->(C:song)'+
-    'OPTIONAL MATCH(S:singer)-[:SINGER]->(C:song)'+
-    'OPTIONAL MATCH(G:genre)-[:GENRE]->(C:song)'+
-    'return C,A,S,G')
+    .run('MATCH(C:song) RETURN C, ID(C)')
     .then((result) => {
       if(result.records[0]){
-        let lastCantante = ''
-        let lastGenero = ''
-        let generos = [];
-        let cantantes = [];
-        let lastSong = result.records[0]._fields[0].properties.name
         result.records.forEach((result) => {
           const cancion = new Cancion({
             id: 0,
             name: '',
-            spotifyId: '',
-            album: '',
-            generos: [],
-            cantantes: []
+            spotifyId: ''
           });
-          if(result._fields[0].properties.name == lastSong){
-            cancion.name = result._fields[0].properties.name
-            cancion.spotifyId = result._fields[0].properties.spotifyId
-            cancion.album = result._fields[1].properties.name
-            lastSong = result._fields[0].properties.name
-            if(result._fields[2].properties.name != lastCantante){
-              cantantes.push(result._fields[2].properties.name)
-              lastCantante = result._fields[2].properties.name
-            }
-            if(result._fields[3].properties.name != lastGenero){
-              generos.push(result._fields[3].properties.name)
-              lastGenero = result._fields[3].properties.name
-            }
-            cancion.cantantes = cantantes
-            cancion.generos = generos
-          }
-          else{
-            //console.log(cancion)
-            const nuevaCancion = cancion
-            canciones.push(nuevaCancion)
-            console.log(canciones)
-            generos = []
-            cantantes = []
-            lastCantante = ''
-            lastGenero = ''
-            cancion.name = result._fields[0].properties.name
-            cancion.spotifyId = result._fields[0].properties.spotifyId
-            cancion.album = result._fields[1].properties.name
-            lastSong = result._fields[0].properties.name
-            if(result._fields[2].properties.name != lastCantante){
-              cantantes.push(result._fields[2].properties.name)
-              lastCantante = result._fields[2].properties.name
-            }
-            if(result._fields[3].properties.name != lastGenero){
-              generos.push(result._fields[3].properties.name)
-              lastGenero = result._fields[3].properties.name
-            }
-            cancion.cantantes = cantantes
-            cancion.generos = generos
-          }
+          cancion.id = result._fields[1].low
+          cancion.name = result._fields[0].properties.name
+          cancion.spotifyId = result._fields[0].properties.spotifyId
+          canciones.push(cancion)
         })
         res.send( canciones )
       }else{
@@ -141,45 +94,15 @@ exports.findOne = (req, res) => {
   let cancion = new Cancion({
     id: 0,
     name: '',
-    spotifyId: '',
-    album: '',
-    generos: [],
-    cantantes: []
+    spotifyId: ''
   });
   session
-    .run('OPTIONAL MATCH(A:album)-[:ALBUM]->(C:song) WHERE ID(C)='+req.params.id+
-          ' OPTIONAL MATCH(S:singer)-[:SINGER]->(C:song) WHERE ID(C)='+req.params.id+
-          ' OPTIONAL MATCH(G:genre)-[:GENRE]->(C:song) WHERE ID(C)='+req.params.id+
-          ' return C,A,S,G')
+    .run('MATCH(C:song) WHERE ID(C)='+req.params.id+' RETURN C, ID(C)')
     .then((result) => {
       if(result.records[0]){
-        //console.log(result.records[1]._fields[3])
-        cancion.id = result.records[0]._fields[0].low
+        cancion.id = result.records[0]._fields[1].low
         cancion.name = result.records[0]._fields[0].properties.name
         cancion.spotifyId = result.records[0]._fields[0].properties.spotifyId
-        cancion.album = result.records[0]._fields[1].properties.name
-        if(result.records[0]._fields[2] != null){
-          let cantantes = []
-          let lastCantante = ''
-          result.records.forEach((result) => {
-            if(result._fields[2].properties.name != lastCantante){
-              cantantes.push(result._fields[2].properties.name)
-              lastCantante = result._fields[2].properties.name
-            }
-          })
-          cancion.cantantes = cantantes
-        }
-        if(result.records[0]._fields[3] != null){
-          let generos = []
-          let lastGenero = ''
-          result.records.forEach((result) => {
-            if(result._fields[2].properties.name != lastGenero){
-              generos.push(result._fields[3].properties.name)
-              lastGenero = result._fields[3].properties.name
-            }
-          })
-          cancion.generos = generos
-        }
         res.send(cancion)
       }else{
         res.send([])
@@ -205,7 +128,7 @@ exports.update = (req, res) => {
   }
 
   session
-    .run('MATCH(S:song) WHERE ID(S) = '+req.params.id+' SET S.name = "'+req.body.name+'", S.spotifyId = "'+req.body.spotifyId+'" RETURN A')
+    .run('MATCH(S:song) WHERE ID(S) = '+req.params.id+' SET S.name = "'+req.body.name+'", S.spotifyId = "'+req.body.spotifyId+'" RETURN S')
     .then( () => {
       let respuesta = 'Cancion actualizado con exito';
       res.send(JSON.stringify(respuesta))
